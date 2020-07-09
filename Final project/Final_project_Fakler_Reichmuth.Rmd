@@ -1,0 +1,231 @@
+---
+title: "Final Project"
+author: "Ben Fakler + Griffin Reichmuth"
+date: "6/8/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(rpart)
+library(rpart.plot)
+library(partykit)
+library(maptree)
+
+mydata <- read.csv("online_retail.csv")
+data <- mutate(mydata, InvoiceDate = as.POSIXct(InvoiceDate, format = "%m/%d/%Y %H:%M"))
+data["month"]  = month(data$InvoiceDate)
+data["week"]  = week(data$InvoiceDate)
+data <- data %>% mutate(revenue = Quantity * UnitPrice)
+
+colnames(data)[colnames(data) == "ï..InvoiceNo"] <- "InvoiceNo" 
+data <- data[data$Quantity > 0, ] 
+data = na.omit(data)
+```
+
+# Summary info about top items and sellers
+
+```{r eval=TRUE, echo=TRUE}
+# find the top ten customers sorted by revenue earned
+customers <- ddply(data, c("CustomerID"), summarize, total_revenue = sum(revenue))
+revenue_c <- customers[order(-customers$total_revenue), ]
+head(revenue_c, 12)
+
+# find the top ten items sold sorted by revenue earned
+items <- ddply(data, c("Description"), summarize, total_revenue = sum(revenue))
+revenue_i <- items[order(-items$total_revenue), ]
+head(revenue_i, 12)
+
+# find the top ten items sold sorted by quantity purchansed
+items1 <- ddply(data, c("Description"), summarize, total_quantity = sum(Quantity))
+quantity_i <- items1[order(-items1$total_quantity), ]
+head(quantity_i, 12)
+```
+
+# 
+
+```{r eval=TRUE, echo=TRUE}
+# filter the data by the items that account for the most revenue
+most_rev = c("PAPER CRAFT , LITTLE BIRDIE", "REGENCY CAKESTAND 3 TIER", "WHITE HANGING HEART T-LIGHT HOLDER",
+              "JUMBO BAG RED RETROSPOT","MEDIUM CERAMIC TOP STORAGE JAR", "POSTAGE", "PARTY BUNTING",
+              "ASSORTED COLOUR BIRD ORNAMENT", "Manual", "RABBIT NIGHT LIGHT")
+most_rev_data = filter(data, Description %in% most_rev)
+
+# filter the data by the customers that account for the most revenue
+highest_buyers = c("14646", "18102", "17450", "16446", "14911", "12415", "14156", "17511", "16029", "12346")
+most_bought_data = filter(data, CustomerID %in% highest_buyers)
+
+# total revenue for all the data
+total_rev <- sum(data$revenue)
+
+# find the total revenue of the top ten items that account for the most revenue
+most_sold_rev <- sum(most_rev_data$revenue)
+most_rev_items_percentage = (most_sold_rev / total_rev) * 100
+
+most_rev_items_percentage
+
+# find the total revenue of the top ten customers that account for the most revenue
+most_bought_rev <- sum(most_bought_data$revenue)
+most_items_bought_percentage = (most_bought_rev / total_rev) * 100
+
+most_items_bought_percentage
+```
+
+
+```{r eval=TRUE, echo=TRUE}
+most_rev_1 = c("PAPER CRAFT , LITTLE BIRDIE", "REGENCY CAKESTAND 3 TIER", "WHITE HANGING HEART T-LIGHT HOLDER",
+              "JUMBO BAG RED RETROSPOT", "MEDIUM CERAMIC TOP STORAGE JAR")
+most_rev_2 = c("POSTAGE", "PARTY BUNTING",
+              "ASSORTED COLOUR BIRD ORNAMENT", "Manual", "RABBIT NIGHT LIGHT")
+# Filter data of top revenue generating customers by the top 5 revenue generating products
+most_sold_for_top_buyers_1 = filter(most_bought_data, Description %in% most_rev_1)
+most_sold_for_top_buyers_1 <-  most_sold_for_top_buyers_1[most_sold_for_top_buyers_1$Quantity < 8000, ] 
+
+# Filter data of top revenue generating customers by the top 6-10 revenue generating products
+most_sold_for_top_buyers_2 = filter(most_bought_data, Description %in% most_rev_2)
+
+ggplot(most_sold_for_top_buyers_1, aes(week, Quantity)) + geom_point(aes(color = Description))
+ggplot(most_sold_for_top_buyers_2, aes(week, Quantity)) + geom_point(aes(color = Description))
+
+top_4_rev = c("PAPER CRAFT , LITTLE BIRDIE", "REGENCY CAKESTAND 3 TIER", "WHITE HANGING HEART T-LIGHT HOLDER",
+              "JUMBO BAG RED RETROSPOT")
+pq = filter(data, Description %in% top_4_rev)
+
+ggplot(pq, aes(log(Quantity), UnitPrice)) + geom_point(aes(color = Description))
+
+
+ggplot(data=most_rev_data, aes(Quantity, Description)) + geom_bar(stat = "identity", fill="#63d297ff")+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + guides(fill=FALSE)
+```
+
+
+
+```{r eval=TRUE, echo=TRUE}
+top_4_rev = c("PAPER CRAFT , LITTLE BIRDIE", "REGENCY CAKESTAND 3 TIER", "WHITE HANGING HEART T-LIGHT HOLDER",
+              "JUMBO BAG RED RETROSPOT")
+
+# filter data by top 4 revenue generating products
+most_sold_4_data = filter(data, Description %in% top_4_rev)
+# get any of the custormers that purchase any top 4 revenue generating products
+customers = unique(most_sold_4_data["CustomerID"])
+customers = apply(customers, 1, as.character)
+best_customers = filter(data, CustomerID %in% customers)
+ # find the percentage of revenue of customers that buy any of top 4 revenue generating products of total revenue
+best_customers_rev = (sum(best_customers$revenue) / total_rev) * 100
+best_customers_rev
+
+
+# find all the unique invoice numbers with a purchase of any of top 4 revenue generating products
+invoices = unique(most_sold_4_data["InvoiceNo"])
+# calculate the percentage of invoices that contain any of the top 4 revenue generating products compared to the total amount
+# of invoices
+(nrow(invoices) / nrow(unique(data["InvoiceNo"]))) * 100
+
+
+pct <- c(71.0724, 28.9276)
+shades <- c("#63d297ff", "lightgray")
+categories <- c("Customers who buy top 4", "Other Customers")
+pie(pct, labels = categories, col = shades)
+
+
+pct1 <- c(25.14027, 74.85973)
+categories1 <- c("Invoices that contain top 4", "Other Invoices")
+pie(pct1, labels = categories1, col = shades)
+
+```
+
+# Double Machine Learning to find price elasticity of RABBIT NIGHT LIGHT and WHITE HANGING HEART T-LIGHT HOLDER
+
+```{r eval=TRUE, echo=TRUE}
+
+
+rabbit_data = read.csv("rabbit_data.csv")
+rabbit_data = na.omit(rabbit_data)
+rabbit_data = select(rabbit_data,-c(X))
+rabbit_data$UnitPrice <- log(rabbit_data$UnitPrice)
+rabbit_data$lag_unit_price <- log(rabbit_data$lag_unit_price)
+rabbit_data$Quantity <- log(rabbit_data$Quantity)
+rabbit_data$lag_q <- log(rabbit_data$lag_q)
+
+light_data = read.csv("light_data.csv")
+light_data = na.omit(light_data)
+light_data = select(light_data,-c(X))
+light_data$UnitPrice <- log(light_data$UnitPrice)
+light_data$lag_unit_price <- log(light_data$lag_unit_price)
+light_data$Quantity <- log(light_data$Quantity)
+light_data$lag_q <- log(light_data$lag_q)
+
+# Use Double ML to estimate elasticities for RABBIT NIGHT LIGHT
+
+# Transform to categorical variables
+rabbit_data$lag_week = as.factor(rabbit_data$lag_week)
+rabbit_data$Country = as.factor(rabbit_data$Country)
+
+
+# Specifies columns to pass for to the Trees estimating Quantity and UnitPrice off of lagged features
+dataToPass1<- rabbit_data[,c("Quantity","lag_unit_price","lag_q","lag_week",
+                             "Country")]
+dataToPass2<- rabbit_data[,c("UnitPrice","lag_unit_price","lag_q","lag_week",
+                             "Country")]
+ 
+# Trains the models
+tree.rabbit_q = rpart(as.formula(Quantity~.),data=dataToPass1,
+                      method="anova",cp=0.01)
+tree.rabbit_p = rpart(as.formula(UnitPrice~.),data=dataToPass2,
+                      method="anova",cp=0.01)
+draw.tree(tree.rabbit_q)
+draw.tree(tree.rabbit_p)
+
+
+# Prints the standard errors
+print(cor(rabbit_data$Quantity, predict(tree.rabbit_q, rabbit_data))^2)
+print(cor(rabbit_data$UnitPrice, predict(tree.rabbit_p, rabbit_data))^2)
+
+
+# Calculates the residuals for the final step regression
+resids_q = (rabbit_data$Quantity - predict(tree.rabbit_q, rabbit_data))
+resids_p = (rabbit_data$UnitPrice - predict(tree.rabbit_p, rabbit_data))
+
+
+# Regresses residual quantity on residual price to get elasticity estimate
+model = glm(resids_q ~ resids_p)
+print(summary(model))
+
+
+# Replicates the steps above for the HEART T-LIGHT
+
+light_data$lag_week = as.factor(light_data$lag_week)
+light_data$Country = as.factor(light_data$Country)
+
+
+dataToPass3<- light_data[,c("Quantity","lag_unit_price","lag_q","lag_week",
+                             "Country")]
+dataToPass4<- light_data[,c("UnitPrice","lag_unit_price","lag_q","lag_week",
+                             "Country")]
+
+
+tree.light_q = rpart(as.formula(Quantity~.),data=dataToPass3,
+                      method="anova",cp=0.01)
+
+
+tree.light_p = rpart(as.formula(UnitPrice~.),data=dataToPass4,
+                      method="anova",cp=0.01)
+
+
+draw.tree(tree.light_q)
+draw.tree(tree.light_p)
+
+
+print(cor(light_data$Quantity, predict(tree.light_q, light_data))^2)
+print(cor(light_data$UnitPrice, predict(tree.light_p, light_data))^2)
+
+
+resids_q2 = (light_data$Quantity - predict(tree.light_q, light_data))
+resids_p2 = (light_data$UnitPrice - predict(tree.light_p, light_data))
+
+
+model2 = glm(resids_q2 ~ resids_p2)
+print(summary(model2))
+```
