@@ -23,3 +23,6 @@
  
 ## How to reproduce our results
 - In Rstudio, knit "Final_project_Fakler_Reichmuth.RMD" 
+
+##  Methodology info
+- A primer for Double Machine Learning can be found here: https://www.linkedin.com/pulse/double-machine-learning-approximately-unbiased-jonas-vetterle
