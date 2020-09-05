@@ -22,4 +22,4 @@
   - maptree
  
 ## How to reproduce our results
-- Knit "Final_project_Fakler_Reichmuth.RMD" 
+- In Rstudio, knit "Final_project_Fakler_Reichmuth.RMD" 
