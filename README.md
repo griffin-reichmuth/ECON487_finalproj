@@ -2,7 +2,7 @@
 
 ## Project details
 - In Economics 487 (Data Science for Strateic Pricing), we were tasked with analyzing a messy wholesale purchase data set. My partner Ben Fakler and I investigated the data and used a
-- double machine learning algorithm procdure to approximate the price elasticity of two of the highest revenue-grossing products by training a decision tree to predict Quantity and UnitPrice.
+- double machine learning algorithm procedure to approximate the price elasticity of two of the highest revenue-grossing products by training a decision tree to predict Quantity and UnitPrice.
 
 - 
 ##  Methodology info
